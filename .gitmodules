@@ -1,3 +1,3 @@
-[submodule "dataset/microsoft_data"]
-	path = dataset/microsoft_data
-	url = git@github.com:location-competition/indoor-location-competition-20.git
+[submodule "dataset/microsoft"]
+	path = dataset/microsoft
+	url = git@github.com:Yang-Qirui/Dataset4GraFin.git
