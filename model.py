@@ -22,7 +22,7 @@ class GraphSAGE(nn.Module):
             else:
                 temp_val = h[i]
             # Apply the weight and activation
-            new_h[i] = self.activate(torch.mm(temp_val.unsqueeze(0), self.weight)).squeeze()
+            new_h[i] = self.activate(torch.mm(self.weight, torch.transpose(temp_val.unsqueeze(0), 0,))).squeeze()
         return new_h
 
 class GraFinModel(nn.Module):
@@ -56,4 +56,4 @@ class GraFinLoss(nn.Module):
         return loss_1 + loss_2
 
     def forward(self, Y, D_rp2rp, L_rp2rp, D_rp2ap, L_rp2ap):
-        return self.alpha * self._forward(Y, D_rp2rp, L_rp2rp) + (1 - self.alpha) * self._forward(Y, D_rp2ap, L_rp2ap)
+        return self.alpha * self._forward(Y[:D_rp2rp.shape[0]], D_rp2rp, L_rp2rp) + (1 - self.alpha) * self._forward(Y, D_rp2ap, L_rp2ap)

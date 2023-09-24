@@ -21,11 +21,12 @@ def find_k_closest_rows(query_vector, matrix, k=1):
     return norm_weights, indices.tolist()
 
 def run(args, adjacent_matrix, features, test_set, all_aps, rp_pos):
-    rp2ap_adjacent = adjacent_matrix[:args.num_rp][:, args.num_rp:]
-    rp2rp_adjacent = adjacent_matrix[:args.num_rp][:, :args.num_rp]
-    print(rp2ap_adjacent.shape, rp2rp_adjacent.shape)
-    D_rp2ap = torch.cat((torch.diag(torch.sum(rp2ap_adjacent, dim=1)), torch.zeros((rp2ap_adjacent.shape[0], rp2ap_adjacent.shape[1] - rp2ap_adjacent.shape[0]))), dim=1).to(device) # degree matrix
+    rp2rp_adjacent = adjacent_matrix[:args.num_rp, :args.num_rp] # rp x rp
     D_rp2rp = torch.diag(torch.sum(rp2rp_adjacent, dim=1)).to(device) # degree matrix
+    pad_matrix = torch.zeros_like(adjacent_matrix)
+    pad_matrix[:args.num_rp, :args.num_rp] = rp2rp_adjacent
+    rp2ap_adjacent = adjacent_matrix - pad_matrix # (rp + ap) x (rp + ap)
+    D_rp2ap = torch.diag(torch.sum(rp2ap_adjacent, dim=1)).to(device) # degree matrix
 
     L_rp2ap = D_rp2ap - rp2ap_adjacent
     L_rp2rp = D_rp2rp - rp2rp_adjacent
@@ -34,6 +35,7 @@ def run(args, adjacent_matrix, features, test_set, all_aps, rp_pos):
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     loss_fn = GraFinLoss(args.alpha)
 
+    min_loss, min_err = float('inf'), float('inf')
     with tqdm(total=args.epoch) as t:
         for e in range(args.epoch):
             # Forward phase
@@ -48,9 +50,10 @@ def run(args, adjacent_matrix, features, test_set, all_aps, rp_pos):
             # Evaluation
             model.eval()
             ap_fps = Y[args.num_rp:]
-            rp_fps = torch.mm(rp2ap_adjacent, ap_fps)
+            rp_fps = torch.mm(adjacent_matrix[:args.num_rp, args.num_rp:], ap_fps)
+            test_pbar = tqdm(test_set.items(), total=len(test_set), desc="Testing", leave=False)
             cnt, err = 0, 0
-            for k, v in test_set.items():
+            for k, v in test_pbar:
                 ground_truth_coordinate = torch.tensor(k).unsqueeze(0)
                 ap_list = list(v)
                 rp_fp = torch.zeros((1, rp_fps.shape[1]))
@@ -62,8 +65,16 @@ def run(args, adjacent_matrix, features, test_set, all_aps, rp_pos):
                 err += torch.nn.functional.l1_loss(predict_pos, ground_truth_coordinate)
                 cnt += 1
 
+                test_pbar.set_postfix(test_error=err.item() / cnt)
+                test_pbar.update(1)
+
             t.set_description(f"Epoch {e}")            
             t.set_postfix(loss=loss.item(), error=err.item() / cnt)
+            if loss.item() < min_loss:
+                min_loss = loss.item()
+            if err.item() < min_err:
+                min_err = err.item()
+            t.set_postfix(min_loss=min_loss, min_error=min_err)
             t.update(1)
 
 def main(args):
@@ -73,7 +84,7 @@ def main(args):
     selected_rps = random.sample(list(tot_pos_rssi_dict.keys()), args.num_rp)
     rp_pos_rssi_dict = {k: tot_pos_rssi_dict[k] for k in selected_rps}
     test_pos_rssi_dict = {k: v for k, v in tot_pos_rssi_dict.items() if k not in selected_rps}
-    A, all_aps = gen_adjacent_matrix(rp_pos_rssi_dict, all_aps, args)
+    A = gen_adjacent_matrix(rp_pos_rssi_dict, all_aps, args)
     X = gen_landmarks_features(A, args.thres_hop, args.num_rp)
     start = time.time()
     run(args, torch.from_numpy(A).to(device), torch.from_numpy(X).to(device), test_set=test_pos_rssi_dict, all_aps=all_aps, rp_pos=torch.tensor(list(rp_pos_rssi_dict.keys()), dtype=torch.double).to(device))

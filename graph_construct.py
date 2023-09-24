@@ -17,7 +17,6 @@ def gen_rp2rp_adjacent(heat_positions, thres_k):
         row = euclidean_dist[i, :]
         sorted_indices = np.argsort(row)
         nearest_k_rps = sorted_indices[:thres_k]
-        
         # Update the adjacency matrix for the k nearest neighbors
         rp2rp_adjacent_matrix[i, nearest_k_rps] = 1 / (1 + row[nearest_k_rps])
         
@@ -37,10 +36,11 @@ def gen_rp2ap_adjacent(pos_rssi_dict, all_aps, thres_q, r0, n):
     #     new_pos_rssi_dict[rp] = new_ap_list
     # all_aps = list(all_aps)
     rp_neighbor_aps_matrix = []
+    all_aps_dict = {ap:i for i, ap in enumerate(all_aps)}
     for rp, ap_list in pos_rssi_dict.items():
         rp_neighbor_aps_tensor = np.full((len(all_aps)), np.NINF)
         for ap_mac, rssi in ap_list:
-            ap_id = all_aps.index(ap_mac)
+            ap_id = all_aps_dict[ap_mac]
             rp_neighbor_aps_tensor[ap_id] = rssi
         rp_neighbor_aps_matrix.append(rp_neighbor_aps_tensor)
     rp_neighbor_aps_matrix = np.array(rp_neighbor_aps_matrix)
@@ -49,14 +49,13 @@ def gen_rp2ap_adjacent(pos_rssi_dict, all_aps, thres_q, r0, n):
         valid_values = column[column != np.NINF] # ignore -inf to get threshold
         if len(valid_values) == 0:
             continue
-        threshold_value = np.percentile(valid_values, thres_q)
+        threshold_value = np.percentile(valid_values, thres_q * 100)
         rp_neighbor_aps_matrix[:, j][column < threshold_value] = np.NINF
     
-    non_ninf_elem = rp_neighbor_aps_matrix[rp_neighbor_aps_matrix != np.NINF]
-    non_ninf_adjacent_elem = [LDPL(rssi, r0, n) for rssi in non_ninf_elem] # LDPL model
-    adjacent_matrix = np.zeros_like(rp_neighbor_aps_matrix)
-    adjacent_matrix[rp_neighbor_aps_matrix != np.NINF] = non_ninf_adjacent_elem
-    return adjacent_matrix
+    rp_neighbor_aps_matrix[rp_neighbor_aps_matrix == np.NINF] = 0
+    rp_neighbor_aps_matrix[rp_neighbor_aps_matrix != 0] = LDPL(rp_neighbor_aps_matrix[rp_neighbor_aps_matrix != 0], r0, n)
+    
+    return rp_neighbor_aps_matrix
 
 
 def gen_adjacent_matrix(pos_rssi_dict, all_aps, args):
@@ -69,5 +68,5 @@ def gen_adjacent_matrix(pos_rssi_dict, all_aps, args):
     lower_half = np.concatenate((rp2ap_matrix.T, O), axis=1)
     A = np.vstack([upper_half, lower_half])
     print("adjacent matrix shape:", A.shape)
-    return A, all_aps
+    return A
     
