@@ -1,9 +1,10 @@
+from collections import defaultdict
 from pathlib import Path
 import argparse
 import sys
 import numpy as np
 sys.path.append("./dataset/microsoft")
-from dataset.microsoft.main import calibrate_magnetic_wifi_ibeacon_to_position, extract_wifi_count, extract_wifi_rssi
+from dataset.microsoft.main import calibrate_magnetic_wifi_ibeacon_to_position, extract_wifi_count
 
 def get_position_coordinate(path_data_dir):
     '''
@@ -24,6 +25,21 @@ def get_position_coordinate(path_data_dir):
     for heat_pos in heat_positions.tolist():
         pos_rssi_dict[tuple(heat_pos)] = tuple(mwi_datas[tuple(heat_pos)]['wifi'][:, 2:4])
     return pos_rssi_dict 
+
+def aggregate_duplicate_AP_scan(pos_rssi_dict):
+    new_pos_rssi_dict = {}
+    all_aps = set()
+    for rp, ap_list in pos_rssi_dict.items():
+        sum_dict = defaultdict(float)
+        count_dict = defaultdict(int)
+        for ap_mac, rssi in ap_list:
+            all_aps.add(ap_mac)
+            sum_dict[ap_mac] += float(rssi)
+            count_dict[ap_mac] += 1
+        new_ap_list = [(a, sum_dict[a] / count_dict[a]) for a in sum_dict] # for a RP, it's possible for it to scan the same AP several times
+        new_pos_rssi_dict[rp] = new_ap_list
+    all_aps = list(all_aps)
+    return new_pos_rssi_dict, all_aps
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
