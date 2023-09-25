@@ -27,18 +27,18 @@ def run(args, adjacent_matrix, features, test_set, all_aps, rp_pos):
     rp2ap_adjacent = adjacent_matrix - pad_matrix # (rp + ap) x (rp + ap)
     D_rp2ap = torch.diag(torch.sum(rp2ap_adjacent, dim=1)).to(device) # degree matrix
 
-    L_rp2ap = D_rp2ap - rp2ap_adjacent
-    L_rp2rp = D_rp2rp - rp2rp_adjacent
+    L_rp2ap = (D_rp2ap - rp2ap_adjacent).to(device)
+    L_rp2rp = (D_rp2rp - rp2rp_adjacent).to(device)
 
     model = GraFinModel(2, args.num_rp).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    loss_fn = GraFinLoss(args.alpha)
+    loss_fn = GraFinLoss(args.alpha).to(device)
 
     min_loss, min_err = float('inf'), float('inf')
     with tqdm(total=args.epoch) as t:
         for e in range(args.epoch):
             # Forward phase
-            Y = model(adjacent_matrix, features)
+            Y = model(adjacent_matrix, features).to(device)
             loss = loss_fn(Y, D_rp2rp, L_rp2rp, D_rp2ap, L_rp2ap)
 
             # Back propagate phase
