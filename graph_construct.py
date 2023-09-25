@@ -1,5 +1,4 @@
 import numpy as np
-from collections import defaultdict
 
 def LDPL(rssi, r0, n):
     return 1 / (1 + np.power(10, np.abs(rssi - r0) / (10 * n)))

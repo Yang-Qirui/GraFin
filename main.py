@@ -4,7 +4,6 @@ import random
 import time
 import torch
 from tqdm import tqdm
-import numpy as np
 
 from data_process import get_position_coordinate, aggregate_duplicate_AP_scan
 from graph_construct import gen_adjacent_matrix, LDPL

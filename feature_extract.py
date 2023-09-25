@@ -1,6 +1,5 @@
 import numpy as np
 import heapq
-import time
 
 def dijkstra(adj_matrix, start):
     N = adj_matrix.shape[0] 
