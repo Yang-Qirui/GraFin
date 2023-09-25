@@ -53,9 +53,9 @@ def run(args, adjacent_matrix, features, test_set, all_aps, rp_pos):
             test_pbar = tqdm(test_set.items(), total=len(test_set), desc="Testing", leave=False)
             cnt, err = 0, 0
             for k, v in test_pbar:
-                ground_truth_coordinate = torch.tensor(k).unsqueeze(0)
+                ground_truth_coordinate = torch.tensor(k).unsqueeze(0).to(device)
                 ap_list = list(v)
-                rp_fp = torch.zeros((1, rp_fps.shape[1]))
+                rp_fp = torch.zeros((1, rp_fps.shape[1])).to(device)
                 for ap_mac, ap_rssi in ap_list:
                     id = all_aps.index(ap_mac)
                     rp_fp += 1 / (1 + LDPL(ap_rssi, args.r0, args.n)) * ap_fps[id]
@@ -73,6 +73,7 @@ def run(args, adjacent_matrix, features, test_set, all_aps, rp_pos):
                 min_loss = loss.item()
             if err.item() / cnt < min_err:
                 min_err = err.item() / cnt
+                torch.save(model.state_dict(), "./model.pt")
             t.set_postfix(min_loss=min_loss, min_error=min_err)
             t.update(1)
 

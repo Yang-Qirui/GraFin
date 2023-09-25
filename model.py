@@ -48,11 +48,12 @@ class GraFinLoss(nn.Module):
         return torch.mm(torch.mm(Y_t, matrix), Y) 
 
     def _forward(self, Y, D, L):
+        device = Y.device
         Y_t = torch.transpose(Y, 0, 1)
         Y_tLY = self.cal_Y_tMY(Y_t, L, Y)
         Y_tDY = self.cal_Y_tMY(Y_t, D, Y)
         loss_1 = torch.trace(Y_tLY) / torch.trace(Y_tDY) 
-        loss_2 = torch.norm(Y_tDY / torch.norm(Y_tDY, p="fro") - torch.eye(Y_tDY.shape[0]) / math.sqrt(Y_tDY.shape[0]), p="fro")
+        loss_2 = torch.norm(Y_tDY / torch.norm(Y_tDY, p="fro") - (torch.eye(Y_tDY.shape[0]) / math.sqrt(Y_tDY.shape[0])).to(device), p="fro")
         return loss_1 + loss_2
 
     def forward(self, Y, D_rp2rp, L_rp2rp, D_rp2ap, L_rp2ap):
