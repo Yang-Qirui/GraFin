@@ -22,7 +22,7 @@ class GraphSAGE(nn.Module):
             else:
                 temp_val = h[i]
             # Apply the weight and activation
-            new_h[i] = self.activate(torch.mm(self.weight, torch.transpose(temp_val.unsqueeze(0), 0,))).squeeze()
+            new_h[i] = self.activate(torch.mm(self.weight, torch.transpose(temp_val.unsqueeze(0), 0, 1))).squeeze()
         return new_h
 
 class GraFinModel(nn.Module):

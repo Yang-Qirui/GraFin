@@ -72,8 +72,8 @@ def run(args, adjacent_matrix, features, test_set, all_aps, rp_pos):
             t.set_postfix(loss=loss.item(), error=err.item() / cnt)
             if loss.item() < min_loss:
                 min_loss = loss.item()
-            if err.item() < min_err:
-                min_err = err.item()
+            if err.item() / cnt < min_err:
+                min_err = err.item() / cnt
             t.set_postfix(min_loss=min_loss, min_error=min_err)
             t.update(1)
 
